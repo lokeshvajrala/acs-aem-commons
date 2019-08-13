@@ -24,12 +24,13 @@ import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -59,7 +60,7 @@ public class Spreadsheet {
     private int rowCount;
     private transient List<Map<String, CompositeVariant>> dataRows;
     private final List<String> requiredColumns;
-    private Map<String, Class> headerTypes;
+    private Map<String, Optional<Class>> headerTypes;
     private List<String> headerRow;
     private final Map<String, String> delimiters;
     private boolean enableHeaderNameConversion = true;
@@ -70,12 +71,12 @@ public class Spreadsheet {
      * Simple constructor used for unit testing purposes
      *
      * @param convertHeaderNames If true, header names are converted
-     * @param headerArray List of strings for header columns
+     * @param headerArray        List of strings for header columns
      */
     public Spreadsheet(boolean convertHeaderNames, String... headerArray) {
         this.enableHeaderNameConversion = convertHeaderNames;
         headerTypes = Arrays.stream(headerArray)
-                            .collect(Collectors.toMap(this::convertHeaderName, this::detectTypeFromName));
+                .collect(Collectors.toMap(this::convertHeaderName, this::detectTypeFromName));
         headerRow = Arrays.asList(headerArray);
         requiredColumns = Collections.EMPTY_LIST;
         dataRows = new ArrayList<>();
@@ -85,9 +86,9 @@ public class Spreadsheet {
     /**
      * Simple constructor used for unit testing purposes
      *
-     * @param convertHeaderNames If true, header names are converted
+     * @param convertHeaderNames     If true, header names are converted
      * @param caseInsensitiveHeaders Header names that will be ignored during conversion
-     * @param headerArray List of strings for header columns
+     * @param headerArray            List of strings for header columns
      */
     public Spreadsheet(boolean convertHeaderNames, List<String> caseInsensitiveHeaders, String... headerArray) {
         this(convertHeaderNames, headerArray);
@@ -101,8 +102,8 @@ public class Spreadsheet {
             requiredColumns = Collections.EMPTY_LIST;
         } else {
             requiredColumns = Arrays.stream(required)
-                                    .map(this::convertHeaderName)
-                                    .collect(Collectors.toList());
+                    .map(this::convertHeaderName)
+                    .collect(Collectors.toList());
         }
         this.inputStream = file;
     }
@@ -124,14 +125,26 @@ public class Spreadsheet {
         this(true, file, required);
         this.caseInsensitiveHeaders = caseInsensitiveHeaders;
     }
-
+    
     /**
-     * Parse out the input file synchronously for easier unit test validation
-     *
+     * Parse out the input file synchronously for easier unit test validation.
+     * This overload will implicitly use the default JVM locale for numeric and date/time conversions.
+     * 
      * @return List of files that will be imported, including any renditions
      * @throws IOException if the file couldn't be read
      */
     public Spreadsheet buildSpreadsheet() throws IOException {
+        return buildSpreadsheet(Locale.getDefault());
+    }
+    
+    /**
+     * Parse out the input file synchronously for easier unit test validation
+     *
+     * @param locale The locale to be used for numeric and date/time conversions.
+     * @return List of files that will be imported, including any renditions
+     * @throws IOException if the file couldn't be read
+     */
+    public Spreadsheet buildSpreadsheet(Locale locale) throws IOException {
 
         XSSFWorkbook workbook = new XSSFWorkbook(this.inputStream);
 
@@ -140,10 +153,10 @@ public class Spreadsheet {
         final Iterator<Row> rows = sheet.rowIterator();
 
         Row firstRow = rows.next();
-        headerRow = readRow(firstRow).stream()
+        headerRow = readRow(firstRow, locale).stream()
                 .map(v -> v != null ? convertHeaderName(v.toString()) : null)
                 .collect(Collectors.toList());
-        headerTypes = readRow(firstRow).stream()
+        headerTypes = readRow(firstRow, locale).stream()
                 .map(Variant::toString)
                 .collect(Collectors.toMap(
                         this::convertHeaderName,
@@ -153,7 +166,7 @@ public class Spreadsheet {
 
         Iterable<Row> remainingRows = () -> rows;
         dataRows = StreamSupport.stream(remainingRows.spliterator(), false)
-                .map(this::buildRow)
+                .map(row -> buildRow(row, locale))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .collect(Collectors.toList());
@@ -161,7 +174,7 @@ public class Spreadsheet {
         return this;
     }
 
-    private List<Variant> readRow(Row row) {
+    private List<Variant> readRow(Row row, Locale locale) {
         Iterator<Cell> iterator = row.cellIterator();
         List<Variant> rowOut = new ArrayList<>();
         while (iterator.hasNext()) {
@@ -169,26 +182,33 @@ public class Spreadsheet {
             while (c.getColumnIndex() > rowOut.size()) {
                 rowOut.add(null);
             }
-            Variant val = new Variant(c);
+            Variant val = new Variant(c, locale);
             rowOut.add(val.isEmpty() ? null : val);
         }
         return rowOut;
     }
 
     @SuppressWarnings("squid:S3776")
-    private Optional<Map<String, CompositeVariant>> buildRow(Row row) {
+    private Optional<Map<String, CompositeVariant>> buildRow(Row row, Locale locale) {
         Map<String, CompositeVariant> out = new LinkedHashMap<>();
         out.put(ROW_NUMBER, new CompositeVariant(row.getRowNum()));
-        List<Variant> data = readRow(row);
+        List<Variant> data = readRow(row, locale);
         boolean empty = true;
         for (int i = 0; i < data.size() && i < getHeaderRow().size(); i++) {
             String colName = getHeaderRow().get(i);
             if (colName != null && data.get(i) != null && !data.get(i).isEmpty()) {
                 empty = false;
                 if (!out.containsKey(colName)) {
-                    out.put(colName, new CompositeVariant(headerTypes.get(colName)));
+                    Class type = headerTypes.get(colName).orElse(data.get(i).getBaseType());
+                    if (type == Object.class) {
+                        type = data.get(i).getBaseType();
+                    } else if (type == Object[].class) {
+                        type = getArrayType(Optional.of(data.get(i).getBaseType())).get();
+                    }
+                    out.put(colName, new CompositeVariant(type));
                 }
-                if (headerTypes.get(colName).isArray()) {
+                Optional<Class> type = headerTypes.get(colName);
+                if (type.isPresent() && type.get().isArray()) {
                     String[] values = data.get(i).toString().split(Pattern.quote(delimiters.getOrDefault(colName, DEFAULT_DELIMITER)));
                     for (String value : values) {
                         if (value != null && !value.isEmpty()) {
@@ -257,6 +277,9 @@ public class Spreadsheet {
         } else {
             name = str;
         }
+        if (name.contains("[")) {
+            name = StringUtils.substringBefore(name, "[");
+        }
         if (enableHeaderNameConversion && isHeaderCaseInsensitive(name)) {
             name = String.valueOf(name).toLowerCase().replaceAll("[^0-9a-zA-Z:\\-]+", "_");
         }
@@ -287,26 +310,28 @@ public class Spreadsheet {
      * @param name
      * @return
      */
-    private Class detectTypeFromName(String name) {
+    private Optional<Class> detectTypeFromName(String name) {
         boolean isArray = false;
-        Class detectedClass = String.class;
+        Class detectedClass = Object.class;
         if (name.contains("@")) {
             String typeStr = StringUtils.substringAfter(name, "@");
-            if (name.endsWith("]")) {
-                String colName = convertHeaderName(name);
-                isArray = true;
-                String delimiter = StringUtils.substringBetween(name, "[", "]");
-                typeStr = StringUtils.substringBefore("[", delimiter);
-                if (!StringUtils.isEmpty(delimiter)) {
-                    delimiters.put(colName, delimiter);
-                }
+            if (typeStr.contains("[")) {
+                typeStr = StringUtils.substringBefore(typeStr, "[");
             }
             detectedClass = getClassFromName(typeStr);
         }
+        if (name.endsWith("]")) {
+            isArray = true;
+            String delimiter = StringUtils.substringBetween(name, "[", "]");
+            if (!StringUtils.isEmpty(delimiter)) {
+                String colName = convertHeaderName(name);
+                delimiters.put(colName, delimiter);
+            }
+        }
         if (isArray) {
-            return getArrayType(detectedClass);
+            return getArrayType(Optional.of(detectedClass));
         } else {
-            return detectedClass;
+            return Optional.of(detectedClass);
         }
     }
 
@@ -324,7 +349,7 @@ public class Spreadsheet {
             case "calendar":
             case "cal":
             case "time":
-                return Date.class;
+                return Calendar.class;
             case "boolean":
             case "bool":
                 return Boolean.TYPE;
@@ -345,25 +370,27 @@ public class Spreadsheet {
      * @param b
      * @return
      */
-    private Class upgradeToArray(Class a, Class b) {
-        if (a == null) {
+    private Optional<Class> upgradeToArray(Optional<Class> a, Optional<Class> b) {
+        if (!a.isPresent()) {
             return b;
         }
-        if (b == null) {
+        if (!b.isPresent()) {
             return a;
         }
-        if (a.equals(b) || b == String.class) {
+        if (a.get().equals(b.get()) || b.get() == Object.class) {
             return getArrayType(a);
         } else {
             return getArrayType(b);
         }
     }
 
-    private static Class getArrayType(Class clazz) {
-        if (clazz.isArray()) {
+    private static Optional<Class> getArrayType(Optional<Class> clazz) {
+        if (!clazz.isPresent()) {
+            return Optional.empty();
+        } else if (clazz.get().isArray()) {
             return clazz;
         } else {
-            return Array.newInstance(clazz, 0).getClass();
+            return Optional.of(Array.newInstance(clazz.get(), 0).getClass());
         }
     }
 }

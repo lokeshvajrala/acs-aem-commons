@@ -27,6 +27,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.resource.ValueMap;
+import org.osgi.framework.Constants;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
@@ -34,7 +35,11 @@ import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 
 /**
  * ResourcePropertiesHttpCacheConfigExtension
@@ -44,7 +49,8 @@ import java.util.*;
  */
 @Component(
         configurationPolicy = ConfigurationPolicy.REQUIRE,
-        service = {HttpCacheConfigExtension.class, CacheKeyFactory.class}
+        service = {HttpCacheConfigExtension.class, CacheKeyFactory.class},
+        property = {Constants.SERVICE_RANKING + ":Integer=50" }
 )
 @Designate(
         ocd = ResourcePropertiesHttpCacheConfigExtension.Config.class,
@@ -95,11 +101,8 @@ public class ResourcePropertiesHttpCacheConfigExtension extends AbstractKeyValue
             if (properties.containsKey(entry.getKey())) {
                 final String[] propertyValues = properties.get(entry.getKey(), String[].class);
 
-                if (ArrayUtils.isEmpty(propertyValues)) {
+                if (ArrayUtils.isEmpty(propertyValues) || CollectionUtils.containsAny(Arrays.asList(entry.getValue()), Arrays.asList(propertyValues))) {
                     // If no values were specified, then assume ANY and ALL values are acceptable, and were are merely looking for the existence of the property
-                    return true;
-                } else if (CollectionUtils.containsAny(Arrays.asList(entry.getValue()), Arrays.asList(propertyValues))) {
-                    // The resource property value matched one of the allowed values
                     return true;
                 }
                 // No matches found for this row; continue looking through the allowed list

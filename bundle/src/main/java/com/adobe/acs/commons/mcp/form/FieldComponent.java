@@ -30,17 +30,16 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang.StringUtils;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceMetadata;
 import org.apache.sling.api.scripting.SlingScriptHelper;
-import org.osgi.annotation.versioning.ProviderType;
 
 /**
  * Describes a component in a manner which supports auto-generated forms
  */
-@ProviderType
 public abstract class FieldComponent {
 
     private String name;
@@ -210,6 +209,15 @@ public abstract class FieldComponent {
      */
     public final String getName() {
         return name;
+    }
+
+    public final Collection<String> getOptionNames() {
+        if (formField == null || formField.options() == null) {
+            return Collections.EMPTY_LIST;
+        }
+        return Stream.of(formField.options())
+                .map(s -> StringUtils.substringBefore(s, "="))
+                .collect(Collectors.toList());
     }
 
     public final boolean hasOption(String optionName) {

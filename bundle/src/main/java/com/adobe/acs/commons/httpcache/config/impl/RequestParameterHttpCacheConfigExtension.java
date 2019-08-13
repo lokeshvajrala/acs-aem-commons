@@ -26,6 +26,7 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.SlingHttpServletRequest;
+import org.osgi.framework.Constants;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
@@ -46,7 +47,8 @@ import java.util.UUID;
  */
 @Component(
         configurationPolicy = ConfigurationPolicy.REQUIRE,
-        service = {HttpCacheConfigExtension.class, CacheKeyFactory.class}
+        service = {HttpCacheConfigExtension.class, CacheKeyFactory.class},
+        property = {Constants.SERVICE_RANKING + ":Integer=10" }
 )
 @Designate(
         ocd = RequestParameterHttpCacheConfigExtension.Config.class,
@@ -96,11 +98,8 @@ public class RequestParameterHttpCacheConfigExtension extends AbstractKeyValueEx
             if (request.getParameterMap().keySet().contains(entry.getKey())) {
                 final String[] parameterValues = request.getParameterMap().get(entry.getKey());
 
-                if (ArrayUtils.isEmpty(entry.getValue())) {
+                if (ArrayUtils.isEmpty(entry.getValue()) || CollectionUtils.containsAny(Arrays.asList(entry.getValue()), Arrays.asList(parameterValues))) {
                     // If no values were specified, then assume ANY and ALL values are acceptable, and were are merely looking for the existence of the request parameter
-                    return true;
-                } else if (CollectionUtils.containsAny(Arrays.asList(entry.getValue()), Arrays.asList(parameterValues))) {
-                    // The request parameter value matched one of the allowed values
                     return true;
                 }
                 // No matches found for this row; continue looking through the allowed list

@@ -110,9 +110,9 @@ public class FileAssetIngestorTest {
         ingestor = new FileAssetIngestor(context.getService(MimeTypeService.class));
         ingestor.timeout = 1;
         ingestor.jcrBasePath = "/content/dam";
-        ingestor.ignoreFileList = Collections.emptyList();
-        ingestor.ignoreExtensionList = Collections.emptyList();
-        ingestor.ignoreFolderList = Arrays.asList(".ds_store");
+        ingestor.fileFilter = new NamesFilter();
+        ingestor.extensionFilter = new NamesFilter();
+        ingestor.folderFilter = new NamesFilter("-.ds_store");
         ingestor.existingAssetAction = AssetIngestor.AssetAction.skip;
         ingestor.fileBasePath = tempDirectory.getAbsolutePath();
 
@@ -310,9 +310,7 @@ public class FileAssetIngestorTest {
     @Test
     public void testSftpRecursion() throws URISyntaxException, JSchException, SftpException, UnsupportedEncodingException {
         configureSftpFields();
-        ChannelSftp channel = mock(ChannelSftp.class);
-        when(channel.isConnected()).thenReturn(true);
-        when(channel.getSession()).thenReturn(mock(Session.class));
+        ChannelSftp channel = getSftpChannelMock();
 
         Vector<ChannelSftp.LsEntry> entries = (new MockDirectoryBuilder())
                 .addDirectory(".")
@@ -387,6 +385,14 @@ public class FileAssetIngestorTest {
             Assert.assertEquals(validPath, expectedPath.equals(actualPath));
             Assert.assertEquals(ingestor.jcrBasePath + expectedPath, elem.getNodePath(false));
         }
+    }
+
+    private ChannelSftp getSftpChannelMock() throws JSchException {
+        ChannelSftp channel = mock(ChannelSftp.class);
+        when(channel.isConnected()).thenReturn(true);
+        when(channel.getSession()).thenReturn(mock(Session.class));
+
+        return channel;
     }
 
     @Test

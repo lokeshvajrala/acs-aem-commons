@@ -39,6 +39,7 @@ import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.commons.osgi.PropertiesUtil;
+import org.osgi.framework.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +60,11 @@ import java.util.regex.Pattern;
 )
 @Properties({
         @Property(name = "webconsole.configurationFactory.nameHint",
-                value = "Allowed resource types: [ {httpcache.config.extension.resource-types.allowed} ] Config name: [ {config.name} ]")
+                value = "Allowed resource types: [ {httpcache.config.extension.resource-types.allowed} ] Config name: [ {config.name} ]"),
+        @Property(
+                name = Constants.SERVICE_RANKING,
+                intValue = 60
+        )
 })
 @Service
 public class ResourceTypeHttpCacheConfigExtension implements HttpCacheConfigExtension, CacheKeyFactory {
@@ -69,13 +74,13 @@ public class ResourceTypeHttpCacheConfigExtension implements HttpCacheConfigExte
     @Property(label = "Allowed paths",
             description = "Regex of content paths that can be cached.",
             unbounded = PropertyUnbounded.ARRAY)
-    private static final String PROP_PATHS = "httpcache.config.extension.paths.allowed";
+    static final String PROP_PATHS = "httpcache.config.extension.paths.allowed";
     private List<Pattern> pathPatterns;
 
     @Property(label = "Allowed resource types",
             description = "Regex of resource types that can be cached.",
             unbounded = PropertyUnbounded.ARRAY)
-    private static final String PROP_RESOURCE_TYPES = "httpcache.config.extension.resource-types.allowed";
+    static final String PROP_RESOURCE_TYPES = "httpcache.config.extension.resource-types.allowed";
     private List<Pattern> resourceTypePatterns;
 
     @Property(label = "Check RT of ./jcr:content?",
@@ -84,9 +89,17 @@ public class ResourceTypeHttpCacheConfigExtension implements HttpCacheConfigExte
     public static final String PROP_CHECK_CONTENT_RESOURCE_TYPE = "httpcache.config.extension.resource-types.page-content";
     private boolean checkContentResourceType;
 
+
+    @Property(label = "Check resourceSuperType",
+            description = "Should the resourceType check check super Types?",
+            boolValue = false)
+    static final String PROP_CHECK_RESOURCE_SUPER_TYPE = "httpcache.config.extension.resource-types.superType";
+    private boolean checkResourceSuperType;
+
     @Property(label = "Config Name",
             description = "")
-    private static final String PROP_CONFIG_NAME = "config.name";
+    static final String PROP_CONFIG_NAME = "config.name";
+    private String configName;
 
     //-------------------------<HttpCacheConfigExtension methods>
 
@@ -95,7 +108,7 @@ public class ResourceTypeHttpCacheConfigExtension implements HttpCacheConfigExte
             HttpCacheRepositoryAccessException {
 
         if (log.isDebugEnabled()) {
-            log.debug("ResourceType acceptance check on [ {} ~> {} ]", request.getResource(), request.getResource().getResourceType());
+            log.debug("ResourceHttpCacheConfigExtension {} : ResourceType acceptance check on [ {} ~> {} ]", configName, request.getResource(), request.getResource().getResourceType());
         }
 
         for (Pattern pattern : pathPatterns) {
@@ -113,20 +126,19 @@ public class ResourceTypeHttpCacheConfigExtension implements HttpCacheConfigExte
                 return false;
             }
         }
-        log.debug("ResourceHttpCacheConfigExtension checking for resource type matches");
+        log.debug("ResourceHttpCacheConfigExtension {} :  checking for resource type matches", configName);
         // Match resource types.
-        for (Pattern pattern : resourceTypePatterns) {
-            Matcher m = pattern.matcher(candidateResource.getResourceType());
+        return checkResourceType(candidateResource);
+    }
 
-            if (m.matches()) {
-                if (log.isTraceEnabled()) {
-                    log.trace("ResourceHttpCacheConfigExtension accepts request [ {} ]", candidateResource);
-                }
-                return true;
-            }
+    private boolean checkResourceType(Resource candidateResource) {
+        if(checkResourceSuperType){
+            return resourceTypePatterns.stream()
+                    .anyMatch( pattern -> candidateResource.getResourceResolver().isResourceType(candidateResource, pattern.pattern()));
+        }else{
+            return resourceTypePatterns.stream()
+                    .anyMatch( pattern -> pattern.matcher(candidateResource.getResourceType()).matches());
         }
-
-        return false;
     }
 
     //-------------------------<CacheKeyFactory methods>
@@ -161,7 +173,8 @@ public class ResourceTypeHttpCacheConfigExtension implements HttpCacheConfigExte
         resourceTypePatterns = ParameterUtil.toPatterns(PropertiesUtil.toStringArray(configs.get(PROP_RESOURCE_TYPES), new String[]{}));
         pathPatterns = ParameterUtil.toPatterns(PropertiesUtil.toStringArray(configs.get(PROP_PATHS), new String[]{}));
         checkContentResourceType = PropertiesUtil.toBoolean(configs.get(PROP_CHECK_CONTENT_RESOURCE_TYPE), false);
-
+        checkResourceSuperType = PropertiesUtil.toBoolean(configs.get(PROP_CHECK_RESOURCE_SUPER_TYPE), false);
+        configName = PropertiesUtil.toString(configs.get(PROP_CONFIG_NAME), "");
         log.info("ResourceHttpCacheConfigExtension activated/modified.");
     }
 }

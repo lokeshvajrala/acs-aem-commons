@@ -7,6 +7,115 @@ The format is based on [Keep a Changelog](http://keepachangelog.com)
 
 ## [Unreleased]
 
+## [4.3.0] - 2019-07-31
+
+### Fixed
+- #1644 - Asset Ingestor | Add include section
+- #1914 - java.lang.ClassNotFoundException: com.fasterxml.jackson.core.JsonProcessingException
+- #1942 - Renovator issues moving folder in AEM 6.3.3.3
+- #1979 - DialogResourceProviderFactoryImpl slows down bundle deployment
+- #1980 - Fixing error when not using redirect map file
+- #1981 - Fixing Redirect Map Manager issue where the edit button didn't work for pages and Assets
+- #1993 - DialogProvider now supports styles for Dialog and Page dialogs
+- #1953 - Bulk Workflow MCP process and relative path bug-fix for QueryHelperImpl when using QueryBuilder query type.
+- #1997 - MCP Forms fixes for RTE configuration and NPE issue with AbstractResourceImpl when resource type is not set
+- #1998 - Coral3 checkbox storing json value as string instead of boolean when using Json Store in multifields
+- #2011 - Setting Travis platform to Trusty so that Oracle JDK 8 build will continue to work.
+
+### Added
+- #1953 - Bulk Workflow MCP process and relative path bug-fix for QueryHelperImpl when using QueryBuilder query type.
+- #1993 - New components for autocomplete and rich text editor
+- #2012 - Added support for query autocomplete widget
+
+## [4.2.2] - 2019-07-15
+
+### Added
+- #1967 - Expose On-Deploy Script Executor for external script triggering
+- #1967 - Write On-Deploy Script exception statement to the result node
+- #1927 - HTTP cache: added cookie exclusion
+- #1905 - HTTP cache: added response header exclusion
+
+### Changed
+- #1945 - Added support for jcr:content creation and update to the Data Importer
+- #1644 - Asset Ingestor | Add include section
+- #1989 - Updated maven dependency org.owasp:dependency-check-maven to 5.1.1
+
+### Fixed
+- #1547 - Updated Report Runner's ReportCSVExportServlet to support extra-ACS Commons ReportCellCSVExporter
+- #1976 - Fixed failing Remote Assets and tests dependent on mock server on JDK 11
+- #1982 - Fixed the Shared and Global icons that are not appearing in edit bar when the dialog is edited and saved and page refreshes due to Edit Config Listener ( Shared Component Properties )
+
+## [4.2.0] - 2019-06-18
+
+### Added
+- #1795 - Added the Asset Content Packager
+- #1880 - Granite Select Filter
+- #1893 - add javax.annotation dependency (removed in JDK 11)
+- #1900 - Tag Report MCP
+- #1904 - Dialog resource provider generates cq:dialog for you (note: disabled by default)
+- #1920 - Add @ChildResourceFromRequest annotation to substitute for @ChildResource when a child model object requires a SlingHttpServletRequest to adapt from.
+- #1872 - Added support for oakpal:webster, creating a process to keep checklists, nodetypes, and privileges up-to-date.
+
+### Fixed
+- #1845 - Fixes issue with ComponentErrorHandler OSGi component never being satisfied due to incorrect dependency on ModeUtil
+- #1868 - Added support for @Named annotation in MCP Form Field processor
+- #1885 - WorkflowPackageManager API now supports (and prefers) /var/workflow/packages location.
+- #1897 - Fixed an NPE with removing a group w/ Ensure Authorizable when the group was already removed
+- #1934 - add explicit javax.annotation version to maven-bundle-plugin after #1893
+- #1202 - fix overflow handling in looping iterator
+- Adjust JCRHttpCacheStoreImplTest to Java 11
+- Adjust PageCompareDataImplTest to Java 11
+- Adjust EntryNodeWriterTest to Java 11
+- Adjust I18nProviderImplTest to Java 11
+
+## [4.1.0] - 2019-05-07
+
+### Added
+- #1294 - New Remote Assets feature
+- #1713 - Added Servlet Filter to generate an ETag header based on a message digest
+- #1778 - Added folder support to system notifications
+- #1780 - Added a new version of the XSS Taglib to support the sling XSSAPI.
+- #1783 - Added the possibility to replace the existing host in an attribute
+- #1797 - Add a OakPal check to ensure that all the required imported packages are satisfied
+- #1806 - Http Cache: Added RequestPath extension
+- #1825 - Added sql2scorer JSON servlet to provide oak:scoreExplanation details for JCR-SQL2 queries.
+- #1899 - Added page inheritance respected in Named Transform Image Servlet for cq:Page
+- #1973 - Added Vanity URL support to SiteMap and the ability to specify URL rewrites so the output matches dispatcher
+
+### Changed
+- #1539 - Removed unused references to the QueryBuilder API.
+- #1765 - Strings in spreadsheet input are no longer automatically assumed to be strings -- Fixes to spreadsheet and variant for handling data types, especially dates, as well as unit test coverage for data importer.
+- #1774 - Upgraded oakpal dependency to 1.2.0 to support execution in an AEM OSGi runtime.
+- #1786 - Shade embedded libraries and produce dependency-reduced pom to avoid downstream effects of embedded dependencies.
+- #1823 - Upgraded oakpal plugin to 1.2.1 to for json serialization fix.
+- #1856 - It's now possible to change the locale used for number, date and time handling for Spreadsheet instances, allowing consistent behavior independent of OS defaults.
+- #1852 - Switched from event-based resource observation to the ResourceChangeListener API wherever possible. In the case of the JCRNodeChangeEventHandler component, reconfiguration is necessary to be able to use the new API.
+
+### Fixed
+- #1819 - Http Cache - Combined extensions : fixed mechanism to use LDAP syntax to bind factories
+- #1528 - Added support for 6.4/6.5 workflow instances location and fixed issue with removing workflows older than.
+- #1709 - Fixes issue with ACS AEM Commons utility page's header bars not rendering properly.
+- #1759 - Fixing the undefined error on limit object in classicui-limit-parsys.js
+- #1760 - Corrected provider type usage for MCP form classes, as well as JSON serialization issues
+- #1762 - Fixed missing code for DAM Assets Copy Publish URL feature.
+- #1773 - Fix name clashes for pipeline.types
+- #1776 - Fix possibly negative index
+- #1780 - Fixed ACS Commons XSS Taglib to work with the support XSSFunctions class.
+- #1789 - Corrected handling of checkboxes in MCP, fixing renovator dry-run bug.
+- #1791 - Fixed Asset Folder Creator to support non-string cell types (ie. Numeric)
+- #1800 - Make sure all pending changes are committed in Fast Action Manager when saveInterval isn't 1
+- #1805 - Fixing the unit tests of the Variant class that may fail on unusual OS locale settings
+- #1833 - Fixes issue with ACS AEM Commons utility report page's header bar not rendering properly.
+- #1840 - Fixed UI issue with User Exporter to allow removal of all properties.
+- #1859 - Fixes the misalignment of delete icon in Reports List Page
+- #1855 - Remote asset sync functionality couldn't sync date properties unless the OS language was set to English.
+- #1858 - Fixed issue with legacy dialog type for Shared Component Properties.
+- #1839 - Fixed editing page for system notifications
+- #1881 - Fixed issue where ReflectionUtil.isAssignableFrom() returned false positive result.
+- #1888 - Fixed issues with Stylesheet Inliner.
+- #1836 - Allow uniform download links in JCR Compare
+- #1835 - all options work together now and do not break the connections placement anymore
+
 ## [4.0.0] - 2019-02-20
 
 ### Added
@@ -26,11 +135,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com)
 - #1700 - MCP Forms framework now tracks client libraries required for components as needed
 
 ### Fixed
+- #1796 - HttpCache: Added back in CombinedCacheKeyFactory
 - #1733 - Do not throw ReplicationExceptions from Dispatcher Flush Rules Preprocessor
 - #1745 - Show/hide widgets: feature can now also show/hide complex fields like Image or FileUpload
 - #1724 - AemEnvironmentIndicatorFilterTest.testDisallowedWcmMode is failed because of caret in windows
 - #1699 - MCP UI doesn't work because of StackOverflowError exception
-- #1692 - HttpCache: Refactored resource / group config extensions 
+- #1692 - HttpCache: Refactored resource / group config extensions
 - #1607 - HttpCache: improved the write to response mechanism.
 - #1539 - Reviewed usages of QueryBuilder for ResourceResolver leakages and close leaks.
 - #1590 - Multifield component doesn't render non-composite at all (NPE error)
@@ -60,6 +170,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com)
 - #1699 - Updated MCP servlet to not serialize known types that would otherwise cause problems
 - #1716 - Added short-name to all TLD files.
 - #1730 - MCP Forms Multifield class now handles arrays correctly
+- #1723 - Fix unclosed channel when non exising path provided
 
 ### Changed
 - #1726 - Deploy the bundle via the dedicated DAV url
